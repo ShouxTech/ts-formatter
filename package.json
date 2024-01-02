@@ -1,9 +1,14 @@
 {
   "name": "ts-formatter",
   "displayName": "TS Formatter",
-  "description": "",
-  "version": "0.0.1",
+  "description": "Format Luau code based on TS Industries/Corporation conventions.",
+  "version": "0.0.3",
   "publisher": "ShouxTech",
+  "icon": "Icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShouxTech/ts-formatter.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
