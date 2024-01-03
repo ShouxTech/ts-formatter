@@ -2,6 +2,7 @@ const fs = require('fs');
 const vscode = require('vscode');
 
 const GETSERVICE_REGEX = /local\s+(\w+)\s*=\s*game:GetService\(['"]([^'"]+)['"]\);?/;
+const FONTFACE_PROPERTY = 'FontFace = Font.new(\r';
 const SEMICOLON_CHAR = ';';
 const CARRIAGE_RETURN_CHAR = '\r';
 const NEWLINE_CHAR = '\n';
@@ -97,7 +98,6 @@ function format(fileName, editor, document) {
     if (!isLuaFile) return;
 
     const code = document.getText();
-
     const lines = code.split('\n');
 
     const firstServiceLineNum = getFirstServiceVariableLineNum(lines);
@@ -129,6 +129,30 @@ function format(fileName, editor, document) {
             const lineInfo = linesToMove[i];
 
             editBuilder.insert(new vscode.Position(firstServiceLineNum + 1, 0), correctServiceVariableFormat(lineInfo.code));
+        }
+
+        // React Codify formatter for FontFace.
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            if (!line.includes(FONTFACE_PROPERTY)) continue;
+
+            const params = [];
+            let lineNum = i + 1;
+            while (lineNum - i < 5) {
+                const line = lines[lineNum];
+                if (line.includes(')')) {
+                    break;
+                }
+                params.push({line: lines[lineNum].trim(), lineNum: lineNum});
+                lineNum++;
+            }
+            if (lineNum - i >= 5) continue;
+
+            editBuilder.delete(new vscode.Range(new vscode.Position(params[0].lineNum, 0), new vscode.Position(params[params.length - 1].lineNum + 2, 0)));
+
+            // Rebuild on single line.
+            editBuilder.insert(new vscode.Position(i, line.length - 1), params.map(paramData => paramData.line).join(' ') + '),');
         }
     });
 }

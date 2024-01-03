@@ -26,7 +26,7 @@ async function activate(context) {
     });
     context.subscriptions.push(onSaveDisposable);
 
-	if (isKnitWorkspace()) {
+	if (await isKnitWorkspace()) {
 		await listenForKnitModules();
 
 		const insertKnitModuleCommandDisposable = vscode.commands.registerCommand('ts-formatter.insertKnitModule', (label, document) => {
