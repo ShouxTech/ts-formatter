@@ -1,8 +1,8 @@
 {
   "name": "ts-formatter",
   "displayName": "TS Formatter",
-  "description": "Format Luau code based on TS Industries/Corporation conventions.",
-  "version": "0.0.4",
+  "description": "Format Luau code according to TS Industries/Corporation conventions.",
+  "version": "0.0.5",
   "publisher": "ShouxTech",
   "icon": "Icon.png",
   "repository": {

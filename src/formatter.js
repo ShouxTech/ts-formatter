@@ -76,16 +76,22 @@ function insertBeforeCarriageReturn(line, insertion) {
     return line;
 }
 
-function correctServiceVariableFormat(code) {
-    code = code.trim();
-    code = code.replaceAll('"', '\'');
-    if (code.at(code.length - 1) != CARRIAGE_RETURN_CHAR) { // Must come after the trim.
-        code += CARRIAGE_RETURN_CHAR;
+function isServiceVariableFormatted(line) {
+    if (line.includes('"')) return false;
+    if (!line.includes(';')) return false;
+    return true;
+}
+
+function correctServiceVariableFormat(line) {
+    line = line.trim();
+    line = line.replaceAll('"', '\'');
+    if (line.at(line.length - 1) != CARRIAGE_RETURN_CHAR) { // Must come after the trim.
+        line += CARRIAGE_RETURN_CHAR;
     }
-    if (getLastCharacterBeforeCarriageReturn(code) != ';') {
-        code = insertBeforeCarriageReturn(code, ';');
+    if (getLastCharacterBeforeCarriageReturn(line) != ';') {
+        line = insertBeforeCarriageReturn(line, ';');
     }
-    return code;
+    return line;
 }
 
 /**
@@ -102,21 +108,22 @@ function format(fileName, editor, document) {
 
     const firstServiceLineNum = getFirstServiceVariableLineNum(lines);
 
-    const linesToMove = [];
+    const serviceVariables = [];
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
 
         if (i == firstServiceLineNum) continue;
         if (!isLineAServiceVariable(line)) continue;
-        if (isServiceVariableAttachedToFirstService(lines, i, firstServiceLineNum)) continue;
 
-        linesToMove.push({lineNum: i, code: line});
+        serviceVariables.push({lineNum: i, code: line, isAttachedToFirstService: isServiceVariableAttachedToFirstService(lines, i, firstServiceLineNum)});
     }
 
     editor.edit(editBuilder => {
-        for (let i = linesToMove.length - 1; i >= 0; i--) {
-            const lineInfo = linesToMove[i];
+        for (let i = serviceVariables.length - 1; i >= 0; i--) {
+            const lineInfo = serviceVariables[i];
+
+            if (lineInfo.isAttachedToFirstService) continue;
 
             const isLastLine = (lineInfo.lineNum == (document.lineCount - 1));
 
@@ -125,10 +132,15 @@ function format(fileName, editor, document) {
             editBuilder.delete(new vscode.Range(startPos, endPos));
         }
 
-        for (let i = linesToMove.length - 1; i >= 0; i--) {
-            const lineInfo = linesToMove[i];
+        for (let i = serviceVariables.length - 1; i >= 0; i--) {
+            const lineInfo = serviceVariables[i];
 
-            editBuilder.insert(new vscode.Position(firstServiceLineNum + 1, 0), correctServiceVariableFormat(lineInfo.code));
+            if (lineInfo.isAttachedToFirstService) {
+                if (isServiceVariableFormatted(lineInfo.code)) continue;
+                editBuilder.replace(document.lineAt(lineInfo.lineNum).range, correctServiceVariableFormat(lineInfo.code).trim());
+            } else {
+                editBuilder.insert(new vscode.Position(firstServiceLineNum + 1, 0), correctServiceVariableFormat(lineInfo.code));
+            }
         }
 
         // React Codify formatter for FontFace.
