@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 const format = require('./formatter');
 const insertKnitModule = require('./insert-knit-module');
-const { knitModules, listenForKnitModules } = require('./knit-modules');
+const { knitModules, listenForKnitModules } = require('./knit-modules-list');
 
 async function isKnitWorkspace() {
     const uris = await vscode.workspace.findFiles('**/KnitServer.lua');
