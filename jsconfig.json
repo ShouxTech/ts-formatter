@@ -3,6 +3,7 @@
 		"module": "Node16",
 		"target": "ES2022",
 		"checkJs": true,  /* Typecheck .js files. */
+		"strictNullChecks": true, /* Added by CriShoux for improved optional return type support in JSDoc */
 		"lib": [
 			"ES2022"
 		]

@@ -39,7 +39,12 @@ function isServiceVariableAttachedToFirstService(lines, lineNum, firstServiceLin
     return false;
 }
 
-function getFirstServiceVariableLineNum(lines) {
+/**
+ * @param {string[]} lines
+ * @returns {[string?, number]}
+ */
+function getFirstServiceVariableLineDetails(lines) {
+    let firstServiceLine;
     let firstServiceLineNum = 0;
 
     for (let i = 0; i < lines.length; i++) {
@@ -47,11 +52,12 @@ function getFirstServiceVariableLineNum(lines) {
 
         if (!isLineAServiceVariable(line)) continue;
 
+        firstServiceLine = line;
         firstServiceLineNum = i;
         break;
     }
 
-    return firstServiceLineNum;
+    return [firstServiceLine, firstServiceLineNum];
 }
 
 function getLastCharacterBeforeCarriageReturn(line) {
@@ -76,12 +82,20 @@ function insertBeforeCarriageReturn(line, insertion) {
     return line;
 }
 
+/**
+ * @param {string} line
+ * @returns {boolean}
+ */
 function isServiceVariableFormatted(line) {
     if (line.includes('"')) return false;
     if (!line.includes(';')) return false;
     return true;
 }
 
+/**
+ * @param {string} line
+ * @returns {string}
+ */
 function correctServiceVariableFormat(line) {
     line = line.trim();
     line = line.replaceAll('"', '\'');
@@ -106,7 +120,7 @@ function format(fileName, editor, document) {
     const code = document.getText();
     const lines = code.split('\n');
 
-    const firstServiceLineNum = getFirstServiceVariableLineNum(lines);
+    const [firstServiceLine, firstServiceLineNum] = getFirstServiceVariableLineDetails(lines);
 
     const serviceVariables = [];
 
@@ -120,51 +134,63 @@ function format(fileName, editor, document) {
     }
 
     editor.edit(editBuilder => {
-        for (let i = serviceVariables.length - 1; i >= 0; i--) {
-            const lineInfo = serviceVariables[i];
-
-            if (lineInfo.isAttachedToFirstService) continue;
-
-            const isLastLine = (lineInfo.lineNum == (document.lineCount - 1));
-
-            const startPos = document.lineAt(lineInfo.lineNum).range.start;
-            const endPos = isLastLine ? document.lineAt(lineInfo.lineNum).range.end : document.lineAt(lineInfo.lineNum + 1).range.start;
-            editBuilder.delete(new vscode.Range(startPos, endPos));
-        }
-
-        for (let i = serviceVariables.length - 1; i >= 0; i--) {
-            const lineInfo = serviceVariables[i];
-
-            if (lineInfo.isAttachedToFirstService) {
-                if (isServiceVariableFormatted(lineInfo.code)) continue;
-                editBuilder.replace(document.lineAt(lineInfo.lineNum).range, correctServiceVariableFormat(lineInfo.code).trim());
-            } else {
-                editBuilder.insert(new vscode.Position(firstServiceLineNum + 1, 0), correctServiceVariableFormat(lineInfo.code));
+        { // Service variable stuff.
+            // Format the first service variable if required.
+            if (firstServiceLine && !isServiceVariableFormatted(firstServiceLine)) {
+                const startPos = document.lineAt(firstServiceLineNum).range.start;
+                const endPos = document.lineAt(firstServiceLineNum).range.end;
+                editBuilder.replace(new vscode.Range(startPos, endPos), correctServiceVariableFormat(firstServiceLine).trim());
             }
-        }
 
-        // React Codify formatter for FontFace.
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+            // Delete service variable on current line if not isAttachedToFirstService.
+            for (let i = serviceVariables.length - 1; i >= 0; i--) {
+                const lineInfo = serviceVariables[i];
 
-            if (!line.includes(FONTFACE_PROPERTY)) continue;
+                if (lineInfo.isAttachedToFirstService) continue;
 
-            const params = [];
-            let lineNum = i + 1;
-            while (lineNum - i < 5) {
-                const line = lines[lineNum];
-                if (line.includes(')')) {
-                    break;
+                const isLastLine = (lineInfo.lineNum == (document.lineCount - 1));
+
+                const startPos = document.lineAt(lineInfo.lineNum).range.start;
+                const endPos = isLastLine ? document.lineAt(lineInfo.lineNum).range.end : document.lineAt(lineInfo.lineNum + 1).range.start;
+                editBuilder.delete(new vscode.Range(startPos, endPos));
+            }
+
+            // Move service variable under first service line and/or format service variables.
+            for (let i = serviceVariables.length - 1; i >= 0; i--) {
+                const lineInfo = serviceVariables[i];
+
+                if (lineInfo.isAttachedToFirstService) {
+                    if (isServiceVariableFormatted(lineInfo.code)) continue;
+                    editBuilder.replace(document.lineAt(lineInfo.lineNum).range, correctServiceVariableFormat(lineInfo.code).trim());
+                } else {
+                    editBuilder.insert(new vscode.Position(firstServiceLineNum + 1, 0), correctServiceVariableFormat(lineInfo.code));
                 }
-                params.push({line: lines[lineNum].trim(), lineNum: lineNum});
-                lineNum++;
             }
-            if (lineNum - i >= 5) continue;
+        }
 
-            editBuilder.delete(new vscode.Range(new vscode.Position(params[0].lineNum, 0), new vscode.Position(params[params.length - 1].lineNum + 2, 0)));
+        { // React Codify formatter for FontFace.
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
 
-            // Rebuild on single line.
-            editBuilder.insert(new vscode.Position(i, line.length - 1), params.map(paramData => paramData.line).join(' ') + '),');
+                if (!line.includes(FONTFACE_PROPERTY)) continue;
+
+                const params = [];
+                let lineNum = i + 1;
+                while (lineNum - i < 5) {
+                    const line = lines[lineNum];
+                    if (line.includes(')')) {
+                        break;
+                    }
+                    params.push({line: lines[lineNum].trim(), lineNum: lineNum});
+                    lineNum++;
+                }
+                if (lineNum - i >= 5) continue;
+
+                editBuilder.delete(new vscode.Range(new vscode.Position(params[0].lineNum, 0), new vscode.Position(params[params.length - 1].lineNum + 2, 0)));
+
+                // Rebuild on single line.
+                editBuilder.insert(new vscode.Position(i, line.length - 1), params.map(paramData => paramData.line).join(' ') + '),');
+            }
         }
     });
 }
