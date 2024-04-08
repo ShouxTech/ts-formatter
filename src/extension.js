@@ -2,17 +2,34 @@ const vscode = require('vscode');
 const format = require('./formatter');
 const insertKnitModule = require('./insert-knit-module');
 const { knitModules, listenForKnitModules } = require('./knit-modules-list');
+const { initSuggestPackageModules } = require('./suggest-package-modules');
+const globals = require('./globals');
 
 async function isKnitWorkspace() {
     const uris = await vscode.workspace.findFiles('**/KnitServer.lua');
 	return uris.length > 0;
 }
 
+async function hasWallyPackages() {
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (!workspaceFolders) return false;
+
+	const workspaceFolder = workspaceFolders[0];
+	if (!workspaceFolder) return false;
+
+	try {
+		await vscode.workspace.fs.stat(vscode.Uri.file(workspaceFolder.uri.fsPath + '/Packages'));
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /**
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
-	const onSaveDisposable = vscode.workspace.onWillSaveTextDocument((event) => {
+	context.subscriptions.push(vscode.workspace.onWillSaveTextDocument((event) => {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) return;
 
@@ -23,10 +40,10 @@ async function activate(context) {
 		if (!isLuaFile) return;
 
 		format(fileName, editor, document);
-    });
-    context.subscriptions.push(onSaveDisposable);
+    }));
 
-	if (await isKnitWorkspace()) {
+	globals.isKnitWorkspace = await isKnitWorkspace();
+	if (globals.isKnitWorkspace) {
 		await listenForKnitModules();
 
 		const insertKnitModuleCommandDisposable = vscode.commands.registerCommand('ts-formatter.insertKnitModule', (label, document) => {
@@ -60,6 +77,10 @@ async function activate(context) {
 			}
 		);
 		context.subscriptions.push(knitModulesCompletionItemsDisposable);
+	}
+
+	if (await hasWallyPackages()) {
+		await initSuggestPackageModules(context);
 	}
 }
 

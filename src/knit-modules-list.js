@@ -1,13 +1,10 @@
 const vscode = require('vscode');
+const { getModuleNameFromUri } = require('./utils');
 
 const knitModules = {};
 
 const KNIT_MODULE_REGEX = /.*(?:Controller|Service)\.lua$/;
 const KNIT_MODULE_BLOB = '**/*{Controller,Service}.lua';
-
-function getModuleNameFromUri(uriString) {
-	return uriString.substring(uriString.lastIndexOf('/') + 1).replace('.lua', '');
-}
 
 function addModuleIfKnitModule(uri) {
     const uriString = uri.toString();
