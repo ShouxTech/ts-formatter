@@ -2,7 +2,7 @@ const vscode = require('vscode');
 const format = require('./formatter');
 const insertKnitModule = require('./insert-knit-module');
 const { knitModules, listenForKnitModules } = require('./knit-modules-list');
-const { initSuggestPackageModules } = require('./suggest-package-modules');
+const { initSuggestWallyModules } = require('./suggest-wally-modules');
 const globals = require('./globals');
 
 async function isKnitWorkspace() {
@@ -80,7 +80,7 @@ async function activate(context) {
 	}
 
 	if (await hasWallyPackages()) {
-		await initSuggestPackageModules(context);
+		await initSuggestWallyModules(context);
 	}
 }
 

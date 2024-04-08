@@ -52,7 +52,7 @@ function insertWallyModule(moduleName, document) {
 /**
  * @param {vscode.ExtensionContext} context
  */
-async function initSuggestPackageModules(context) {
+async function initSuggestWallyModules(context) {
     const modules = (await vscode.workspace.findFiles('Packages/*')).map(module => getModuleNameFromUri(module.path));
 
     context.subscriptions.push(vscode.commands.registerCommand('ts-formatter.insertWallyModule', (label, document) => {
@@ -87,5 +87,5 @@ async function initSuggestPackageModules(context) {
 }
 
 module.exports = {
-    initSuggestPackageModules,
+    initSuggestWallyModules,
 };
